@@ -4,7 +4,7 @@ import { EmployeeController } from './empleados.controllers.js';
 import type { IEmployeeRepository } from '../repository/employee.repository.interface.js';
 import type { Employee, EmployeeInput } from '../models/employee.js';
 import { NotFoundError } from '../errors/app.error.js';
-
+    
 // Ninguna línea de este archivo importa mongoose: el controlador se prueba solo contra la abstracción.
 describe('🧪 Unit Test: EmployeeController (Mantenibilidad & Testabilidad)', () => {
   let controller: EmployeeController;
