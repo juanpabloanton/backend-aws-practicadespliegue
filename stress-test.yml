@@ -1,0 +1,110 @@
+config:
+  target: "http://localhost:3000"
+  plugins:
+    ensure: {} # Falla el proceso si no se cumplen los acuerdos de nivel de servicio (SLA)
+  phases:
+    - duration: 20
+      arrivalRate: 5
+      name: "1. Fase de Calentamiento (Tráfico Base)"
+    - duration: 30
+      arrivalRate: 15
+      rampTo: 50
+      name: "2. Fase de Saturación Máxima (Pico de Carga)"
+  ensure:
+    thresholds:
+      - "http.response_time.p99": 200 # El 99% de las transacciones debe procesarse en < 200ms (Comportamiento temporal)
+    maxErrorRate: 1 # No se permite más del 1% de caídas del socket HTTP
+
+scenarios:
+  - name: "Inundación transaccional perimetral (Payloads Mixtos Zod)"
+    flow:
+      # Flujo A: Datos correctos -> recorre la tubería completa (Zod -> controlador -> repositorio -> MongoDB)
+      - post:
+          url: "/api/v1/employees"
+          json:
+            nombre: "Andrés Mendoza"
+            cargo: "Software Architect"
+            departamento: "I+D"
+            sueldo: 4200
+          capture:
+            json: "$.data.id" # El repositorio expone el modelo de dominio (id), no el documento de Mongo (_id)
+            as: "employeeId"
+      - think: 1
+      # Flujo B: Datos corruptos -> el DTO Zod lo rechaza con 400 antes de llegar al controlador
+      - post:
+          url: "/api/v1/employees"
+          json:
+            nombre: "Al"
+            cargo: "Dev"
+            departamento: "TI"
+            sueldo: -500 # Campo ilegal
+       # 1. Body vacío -> faltan todos los campos obligatorios
+      - post:
+          url: "/api/v1/employees"
+          json: {}
+          expect:
+            - statusCode: 400
+            - hasProperty: errors
+      # 2. Tipos incorrectos -> nombre numérico y sueldo como texto
+      - post:
+          url: "/api/v1/employees"
+          json:
+            nombre: 123
+            cargo: "Arquitecto"
+            departamento: "TI"
+            sueldo: "4200"
+          expect:
+            - statusCode: 400
+      # 3. JSON malformado -> lo captura express.json() y lo traduce el interceptor global
+      - post:
+          url: "/api/v1/employees"
+          headers:
+            Content-Type: "application/json"
+          body: '{"nombre": "Andrés", "cargo": '
+          expect:
+            - statusCode: 400
+      # 4. Actualización sin ningún campo
+      - put:
+          url: "/api/v1/employees/000000000000000000000000"
+          json: {}
+          expect:
+            - statusCode: 400
+
+      # ---------- Casos buenos sobre el resto de endpoints ----------
+      # Bueno 1: listar todos los empleados
+      - get:
+          url: "/api/v1/employees"
+          expect:
+            - statusCode: 200
+            - hasProperty: data
+      # Bueno 2: actualización parcial del empleado creado en el Flujo A
+      - put:
+          url: "/api/v1/employees/{{ employeeId }}"
+          json:
+            sueldo: 4500
+          expect:
+            - statusCode: 200
+      # Bueno 3: eliminar el empleado creado (deja la base limpia entre usuarios virtuales)
+      - delete:
+          url: "/api/v1/employees/{{ employeeId }}"
+          expect:
+            - statusCode: 200
+
+      # ---------- Casos malos sobre el resto de endpoints ----------
+      # Malo 1: consultar el empleado recién eliminado -> NotFoundError del controlador
+      - get:
+          url: "/api/v1/employees/{{ employeeId }}"
+          expect:
+            - statusCode: 404
+      # Malo 2: actualizar un id inexistente con un body válido -> pasa Zod pero el repositorio devuelve null
+      - put:
+          url: "/api/v1/employees/000000000000000000000000"
+          json:
+            cargo: "Tech Lead"
+          expect:
+            - statusCode: 404
+      # Malo 3: ruta que no existe -> la atrapa el notFoundHandler global
+      - get:
+          url: "/api/v1/departamentos"
+          expect:
+            - statusCode: 404
