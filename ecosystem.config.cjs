@@ -40,7 +40,7 @@ module.exports = {
       repo: "git@github.com:juanpabloanton/backend-aws-practicadespliegue.git",
       path: "/var/www/backend-aws-practicadespliegue",
       "post-deploy": "ln -sf /var/www/backend-aws-practicadespliegue/.env .env && npm install && pm2 reload ecosystem.config.cjs --env production && pm2 save",
-      ssh_options: 'IdentityFile="C:/Users/Asus Tuf/Documents/Patron_de_diseño_api/practica_despliegue/backend.pem"' // Ruta a tu llave .pem en TU PC LOCAL (Windows)
+      ssh_options: 'IdentityFile=C:/Users/ASUSTU~1/DOCUME~1/PATRON~1/PRACTI~3/backend.pem' // Ruta corta (8.3) a tu llave .pem en TU PC LOCAL (Windows), sin espacios para evitar problemas de parseo de ssh
     }
   }
 };
