@@ -6,6 +6,7 @@ import type { IEmployeeRepository } from './repository/employee.repository.inter
 import { EmployeeController } from './controllers/empleados.controllers.js';
 import { createEmployeeRoutes } from './routes/empleados.routes.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
+import { slackNotifier } from './middlewares/slackNotifier.middleware.js';
 
 export const createApp = (employeeRepository: IEmployeeRepository): Application => {
   const app = express();
@@ -13,6 +14,7 @@ export const createApp = (employeeRepository: IEmployeeRepository): Application 
   app.use(express.json());
   app.use(cors());
   app.use(morgan('dev'));
+  app.use(slackNotifier);
 
   app.set('nombreApp', 'Gestión de empleados');
 

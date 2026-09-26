@@ -20,7 +20,8 @@ module.exports = {
     env: {
       NODE_ENV: "production",
       PORT: process.env.PORT || 3000,
-      MONGODB_URI: process.env.MONGODB_URI
+      MONGODB_URI: process.env.MONGODB_URI,
+      SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL
     },
 
     // Logs y Monitoreo del Servidor
